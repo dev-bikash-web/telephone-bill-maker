@@ -223,8 +223,21 @@ def create_broadband_overlay(output_path):
     from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import letter
     c = canvas.Canvas(output_path, pagesize=letter)
+    
+    # 1. Draw Broadband label
     c.setFont("Helvetica-Bold", OVERLAY_FONT_SIZE)
     c.drawString(OVERLAY_X, OVERLAY_Y, OVERLAY_TEXT)
+    
+    # 2. Draw diagonal strike-through lines (X-shape) across Box 2 (Landline) table
+    # Top-Left: (315, 499)
+    # Bottom-Right: (555, 445)
+    # Bottom-Left: (315, 445)
+    # Top-Right: (555, 499)
+    c.setStrokeColorRGB(0, 0, 0)
+    c.setLineWidth(1.2)
+    c.line(315, 499, 555, 445)
+    c.line(315, 445, 555, 499)
+    
     c.save()
 
 def fill_pdf(lan_entry):
