@@ -43,14 +43,16 @@ graph TD
 2. **CLI / Input Manager**: Automatically passes variables directly to the filler, requiring zero user-interaction unless a validation warning occurs.
 3. **Text Extraction Engine**: Scans the `telephone_bill` directory, caches extracted text to `.txt` files to avoid redundant operations, and runs `pdftotext` on PDFs.
 4. **Regex Parsing Engine**: Analyzes invoice text using regular expressions to extract:
-   - Bill type classification (Postpaid Mobile vs. Broadband) based on invoice code prefix (HF vs MF) and header text keywords.
+   - Bill type classification (Postpaid Mobile vs. Broadband) based solely on scanning the filename and the first 2000 characters of text for keywords (independent of invoice prefixes like `HF`/`MF`):
+     - **Broadband/Wifi**: `"wifi"`, `"wi-fi"`, `"broadband"`, `"broad_band"`, `"fixed line"`, `"fixed_line"`, `"fixedline"`, `"landline"`.
+     - **Postpaid Mobile/Telephone**: `"mobile"`, `"postpaid"`, `"post_paid"`, `"telephone"`, `"telepphone"`.
    - Invoice numbers (identifies labels like `Invoice No` or fallback Airtel patterns).
    - Total payable amounts matching amount labels or decimal number patterns (independent of any hardcoded plan thresholds).
    - Billing month periods.
 5. **Automated Quarter Detection**: Inspects the parsed billing months from all files, groups them, and determines the target billing quarter (Q1-Q4) automatically based on the most frequent quarter.
 6. **Missing Month Safeguard**: Cross-references the detected quarter's months with the present bills. If any month is completely missing, prompts the user to proceed (blanking the month) or exit immediately.
 7. **Form Filling Engine**: Populates target fields (such as employee details, dates, banking, and totals) in the PDF using `pypdf`.
-8. **Overlay Stamp Generator**: Generates a temporary PDF containing custom text (e.g. `"Broadband"`) at precise coordinate positions (X, Y) using `reportlab`, then merges it as a page stamp.
+8. **Overlay Stamp Generator**: Generates a temporary PDF containing custom text (e.g. `"Broadband"`) at precise coordinate positions (X, Y) and diagonal "X" strike-through lines across Box 2 (Landline) table using `reportlab`, then merges it as a page stamp.
 
 ---
 
@@ -80,7 +82,7 @@ sequenceDiagram
     Filler->>Filler: Filter invoices matching selected quarter
     Filler->>Filler: Map constant details (Name, Staff No, Bank Acc, FY)
     Filler->>Filler: Compute box totals & grand totals
-    Filler->>Overlay: Generate temporary Broadband text overlay PDF
+    Filler->>Overlay: Generate temporary Broadband text & Box 2 diagonal overlay PDF
     Overlay-->>Filler: Return temporary PDF path
     Filler->>Filler: Merge form fields & overlay PDF onto template page
     Filler->>PDF: Write final merged file (filled_claim_[Quarter].pdf)
@@ -139,9 +141,9 @@ To guarantee data transparency and alert the user to any parsing failures:
 
 ---
 
-## 7. Visual Coordinates for Label Overlay
+## 7. Visual Coordinates for Label Overlay & Strike-Throughs
 
-Since the template PDF lacks a form field next to the Broadband label, the tool uses reportlab to draw it directly on the canvas:
+Since the template PDF lacks form fields in these areas, the tool draws them directly using reportlab:
 
-- **Label text**: `"Broadband"` (bold, size 12)
-- **Coordinates**: `X = 460`, `Y = 428` (placed on the rightmost side slightly above the horizontal line)
+- **Broadband label**: `"Broadband"` (bold, size 12) at `X = 460`, `Y = 428`
+- **Box 2 (Landline) diagonal strike-through**: Two diagonal lines forming a large cross `X` from `(315, 499)` to `(555, 445)` and `(315, 445)` to `(555, 499)`.

@@ -20,6 +20,9 @@ We wrote a Python script ([make_bill.py](file:///home/bikash/workera/personal_gi
    - Scan the `telephone_bill` directory for PDF bills (excluding templates and outputs).
    - Use `pdftotext` to extract text from each bill.
    - Run regular expressions on the text to extract the Provider Name, Bill/Invoice No, Amount Payable, and Bill Month.
+   - Classify bills dynamically based solely on keyword scanning (first 2000 characters of text and filename) instead of hardcoded prefix rules (like `HF`/`MF`):
+     - **Broadband**: `['wifi', 'wi-fi', 'broadband', 'broad_band', 'fixed line', 'fixed_line', 'fixedline', 'landline']`
+     - **Postpaid Mobile**: `['mobile', 'postpaid', 'post_paid', 'telephone', 'telepphone']`
    - Automatically determine the billing Quarter (Q1-Q4) by mapping the extracted billing months to their respective quarters and selecting the most common quarter among the bills.
 3. **Missing Month Check**:
    - Check if there are any months in the detected quarter that do not have any bills in the directory.
@@ -30,6 +33,7 @@ We wrote a Python script ([make_bill.py](file:///home/bikash/workera/personal_gi
    - Use the `pypdf` library to programmatically fill out the text fields and check the corresponding checkboxes.
    - Calculate box totals, total billed, and total claimed amounts.
    - Draw `"Broadband"` dynamically on the rightmost side above the dash.
+   - Draw diagonal strike-through lines forming an "X" across Box 2 (Landline) table.
    - Save the populated form to a new file, e.g., `filled_claim_[Quarter].pdf`.
 
 ---
@@ -58,7 +62,7 @@ The following values are parsed from the `config.cfg` file and populated on the 
   - Rows 1, 2, and 3 correspond to the 3 months of the selected Quarter.
   - Mark the checkbox for the corresponding month of each row (e.g., for Q4: row 1 Jan, row 2 Feb, row 3 Mar).
   - Calculate `Total Amount` as the sum of postpaid bills.
-- **Box 2 (Landline)**: Ignored completely (left blank).
+- **Box 2 (Landline)**: Crossed out dynamically with cornerwise diagonal strike-through lines (X-shape) and left blank.
 - **Box 3 (Broadband/Dongle)**: Fill using broadband bills.
   - Write values only in **Row 1**, **Row 3**, and **Row 5** (index 6, 8, 10). Rows 2, 4, and 6 are left completely empty.
   - Mark the checkbox for the corresponding month of each row (e.g. for Q4: Jan -> `Check Box_16_4`, Feb -> `Check Box_16_1_4`, Mar -> `Check Box_16_1_1_3`).
@@ -83,8 +87,10 @@ All requirements are successfully met:
 - **Plan-Independent Parser**: Removed hardcoded plan amount thresholds. The parser dynamically extracts amount values using amount labels and decimal scanning, meaning it is immune to future plan changes.
 - **Automated Quarter Detection**: Removed quarter prompt from user inputs. The billing quarter is automatically analyzed from the parsed bills, resolving the appropriate box and checkbox mapping without manual intervention.
 - **Missing Month Safety Check**: Checks if any month has zero bills in the target quarter, presenting the user with an interactive prompt to proceed (keeping the month blank) or exit.
+- **Prefix-Independent Keyword Classification**: Segregates bills using keyword scanning (searching for `mobile`, `postpaid`, `wifi`, `broadband`, etc.) instead of hardcoded prefix (like `MF`/`HF`) checks.
 - **Broadband Box 3 Mapping**: Filled Box 3 instead of Box 2; values are written in Rows 1, 3, and 5 of Box 3. Box 2 remains completely empty.
 - **Broadband Connection Label**: Dynamic overlay draws the word `"Broadband"` in a larger, bold font (size 12) on the rightmost side slightly above the dash (`X=460, Y=428`).
+- **Box 2 Cornerwise Strike-Through**: Draws diagonal "X" strike-through lines crossing the entire Landline table block to clear it out.
 - **Level Checkbox**: The `Level 13A to 10` checkbox is checked automatically.
 - **Bottom Date Field**: The bottom-left date field (`Text Field`) next to the signature is populated with the current date.
 - **Tailored Font Sizes**:

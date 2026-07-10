@@ -130,28 +130,24 @@ def parse_bill(pdf_path):
                 if invoice_no:
                     break
                     
-    # 3. Classify Bill Type (Broadband vs Postpaid Mobile)
-    bill_type = 'Postpaid'
-    if invoice_no:
-        if invoice_no.upper().startswith('HF'):
-            bill_type = 'Broadband'
-        elif invoice_no.upper().startswith('MF'):
+    # 3. Classify Bill Type (Broadband vs Postpaid Mobile) - based solely on keywords
+    text_lower = text[:2000].lower()
+    filename_lower = filename.lower()
+    
+    broadband_kws = ['wifi', 'wi-fi', 'broadband', 'broad_band', 'fixed line', 'fixed_line', 'fixedline', 'landline']
+    postpaid_kws = ['mobile', 'postpaid', 'post_paid', 'telephone', 'telepphone']
+    
+    is_broadband = any(kw in filename_lower for kw in broadband_kws) or any(kw in text_lower for kw in broadband_kws)
+    
+    if is_broadband:
+        bill_type = 'Broadband'
+    else:
+        is_postpaid = any(kw in filename_lower for kw in postpaid_kws) or any(kw in text_lower for kw in postpaid_kws)
+        if is_postpaid:
             bill_type = 'Postpaid'
         else:
-            # Check filename for keywords
-            broadband_filename_keywords = ['broadband', 'broad_band', 'wifi', 'wi-fi', 'fiber', 'fibre', 'ftth', 'landline', 'fixedline']
-            if any(kw in filename for kw in broadband_filename_keywords):
-                bill_type = 'Broadband'
-            else:
-                # Check header text (first 1000 characters) to avoid matching ads in the footer
-                header_text = text[:1000].lower()
-                if any(kw in header_text for kw in ['broadband', 'wifi', 'wi-fi', 'fiber', 'ftth', 'landline']):
-                    bill_type = 'Broadband'
-    else:
-        # Fallback if no invoice no found
-        broadband_keywords = ['broadband', 'broad_band', 'wifi', 'wi-fi', 'fiber', 'fibre', 'ftth', 'landline', 'fixedline']
-        is_broadband = any(kw in filename for kw in broadband_keywords) or any(kw in text.lower() for kw in broadband_keywords)
-        bill_type = 'Broadband' if is_broadband else 'Postpaid'
+            # Fallback default
+            bill_type = 'Postpaid'
         
     # 4. Extract Amount Claimed / Payable (Vendor-agnostic)
     amount = None
