@@ -1,0 +1,9 @@
+[EmployeeDetails]
+lan_entry = YOUR_LAN_ENTRY_NO
+name = YOUR_NAME
+staff_no = YOUR_STAFF_NO
+group_name = YOUR_GROUP_NAME
+group_code = YOUR_GROUP_CODE
+product_name = YOUR_PRODUCT_NAME
+product_code = YOUR_PRODUCT_CODE
+bank_account_no = YOUR_BANK_ACCOUNT_NO
