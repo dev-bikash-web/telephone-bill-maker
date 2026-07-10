@@ -121,12 +121,13 @@ To conform to the specific filing instructions, the Broadband (Box 3) table writ
 To ensure maximum visual quality and prevent text clipping on narrow fields:
 
 1. **Tailored Font Sizes**:
-   - For all metadata fields (`LAN Entry`, `Name`/`Name_1`, `Staff No`/`Staff No_1`, `Date`/`Text Field`, `Group`/`Group Code`, `Product`/`Product code`, `A/C`, `Fin Year`) and `Amount` / `Total` fields, the font size is increased to **10.0pt** for enhanced readability.
+   - For all metadata fields (`LAN Entry`, `Name`/`Name_1`, `Staff No`/`Staff No_1`, `Date`, `Group`/`Group Code`, `Product`/`Product code`, `A/C`, `Fin Year`) and `Amount` / `Total` fields, the font size is increased to **10.0pt** for enhanced readability.
+   - For the bottom-left signature Date field (`Text Field`) (which is very narrow), the font size is set to **7.5pt** to avoid text clipping and overlap.
    - For all `Invoice No` fields (which contain long 16-character numbers), the font size is set to **7.5pt** to fit the text box width perfectly.
    - Other fields (such as `Service Provider`) are kept at their original template default (auto-scaled) sizes for optimal visual layout.
 2. **Forced Rendering (`/NeedAppearances`)**:
    - The tool sets `/NeedAppearances` to `False` in the PDF `AcroForm` catalog.
-   - For the resized fields (Metadata, Amounts, and Invoice Numbers) only, it updates `/DA` and deletes the pre-baked appearance dictionary (`/AP`), forcing the PDF viewer to regenerate the text dynamically. Other fields (like `Service Provider`) are left untouched, preserving their original pre-baked appearances.
+   - For the resized fields (Metadata, Amounts, Signature Date, and Invoice Numbers) only, it updates `/DA` and deletes the pre-baked appearance dictionary (`/AP`), forcing the PDF viewer to regenerate the text dynamically. Other fields (like `Service Provider`) are left untouched, preserving their original pre-baked appearances.
 
 ---
 

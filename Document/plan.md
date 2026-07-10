@@ -88,7 +88,7 @@ All requirements are successfully met:
 - **Level Checkbox**: The `Level 13A to 10` checkbox is checked automatically.
 - **Bottom Date Field**: The bottom-left date field (`Text Field`) next to the signature is populated with the current date.
 - **Tailored Font Sizes**:
-  - Resized metadata fields and `Amount`/`Total` fields to **10.0pt** for excellent legibility.
+  - Resized metadata fields and `Amount`/`Total` fields to **10.0pt** for excellent legibility (excluding the bottom-left signature Date field `Text Field`, which is set to `7.5pt` to prevent layout overlapping).
   - Resized `Invoice No` fields to **7.5pt** to avoid column truncation.
   - Other fields (such as `Service Provider`) preserve their default template auto-scaled sizes.
 - **Forced Rendering**: Set `/NeedAppearances` to `False` and selectively deleted `/AP` streams for resized fields to guarantee custom rendering while leaving other fields untouched.

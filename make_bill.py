@@ -464,7 +464,10 @@ def fill_pdf(lan_entry):
                 # Check if it matches our list or is an Amount/Total field
                 if t in resize_fields or 'Amount' in t or 'Total' in t:
                     should_resize = True
-                    font_size = TEXT_FIELD_FONT_SIZE_DEFAULT
+                    if t == 'Text Field':
+                        font_size = TEXT_FIELD_FONT_SIZE_INVOICE
+                    else:
+                        font_size = TEXT_FIELD_FONT_SIZE_DEFAULT
                 elif 'Invoice No' in t:
                     should_resize = True
                     font_size = TEXT_FIELD_FONT_SIZE_INVOICE
