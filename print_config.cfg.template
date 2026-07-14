@@ -1,0 +1,4 @@
+[PrintCredentials]
+url = YOUR_PRINT_MACHINE_URL
+username = YOUR_PRINT_USERNAME
+password = YOUR_PRINT_PASSWORD
