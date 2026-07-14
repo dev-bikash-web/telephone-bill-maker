@@ -13,7 +13,8 @@ Automate the extraction of billing details from PDF invoices and populate the st
 * **Graceful Missing Data Handling**: Missing details (such as a missing invoice number or amount) are rendered as blank spaces on the PDF form instead of causing crashes.
 * **Auto Quarter Detection**: Automatically analyzes the invoice months present in your `telephone_bill` directory, maps them to the correct financial quarter (`Q1`–`Q4`), and selects the appropriate mapping without prompting the user.
 * **Missing Month Safeguard**: If any billing month in the detected quarter has zero bills, the script prints a warning and prompts you dynamically to proceed (leaving the month blank) or exit.
-* **Visual Precision styling**: Keeps all form fonts exactly as styled in the template, while dynamically resizing long `Invoice No` fields to `7.5pt` to fit their cells perfectly.
+* **Box 2 Diagonal Strike-Through**: Automatically draws a diagonal "X" strike-through across Box 2 (Landline) to invalidate it.
+* **Visual Precision styling**: Keeps all form fonts exactly as styled in the template, while dynamically resizing long `Invoice No` fields and the signature `Text Field` to `7.5pt` to fit their cells perfectly.
 
 ---
 
@@ -45,14 +46,13 @@ Automate the extraction of billing details from PDF invoices and populate the st
 ## Usage
 
 1. Put your PDF bills in the `telephone_bill/` directory.
-2. Run the tool:
+2. Run the filler tool:
    ```bash
    ./run.sh
    ```
 3. The tool will automatically:
-   * Load and validate your `config.cfg` (extracting details and your LAN Entry No).
-   * Parse the bills in the folder and detect the billing quarter (e.g. `Q4`).
-   * Check for missing months and prompt for approval if found.
+   * Load and validate your `config.cfg`.
+   * Parse the bills in the folder and detect the billing quarter (e.g. `Q1`).
    * Output the populated claim PDF at `telephone_bill/filled_claim_[Quarter].pdf`.
 
 ---

@@ -18,7 +18,7 @@ OUTPUT_PDF_TEMPLATE = os.path.join(BILLS_DIR, "filled_claim_{quarter}.pdf")
 OVERLAY_TEXT = "Broadband"
 OVERLAY_X = 460
 OVERLAY_Y = 428
-OVERLAY_FONT_SIZE = 12
+OVERLAY_FONT_SIZE = 10
 
 # Checkbox for "Level 13A to 10"
 LEVEL_13A_10_CHECKBOX = "Check Box_21"
@@ -221,7 +221,7 @@ def create_broadband_overlay(output_path):
     c = canvas.Canvas(output_path, pagesize=letter)
     
     # 1. Draw Broadband label
-    c.setFont("Helvetica-Bold", OVERLAY_FONT_SIZE)
+    c.setFont("Helvetica", OVERLAY_FONT_SIZE)
     c.drawString(OVERLAY_X, OVERLAY_Y, OVERLAY_TEXT)
     
     # 2. Draw diagonal strike-through lines (X-shape) across Box 2 (Landline) table
@@ -446,17 +446,27 @@ def fill_pdf(lan_entry):
     # And modify /DA and remove /AP for specified text fields only to increase/decrease their font sizes
     page = writer.pages[0]
     
-    # Lists of fields to resize to TEXT_FIELD_FONT_SIZE_DEFAULT (10.0pt)
-    resize_fields = [
-        'LAN Entry', 'Name', 'Name_1', 'Staff No', 'Staff No_1',
-        'Date', 'Text Field', 'Group', 'Group Code', 'Product', 'Product code',
-        'A/C', 'Fin Year'
-    ]
-    
     if '/Annots' in page:
         for annot_ref in page['/Annots']:
             annot = annot_ref.get_object()
             t = annot.get('/T')
+            
+            # Normalize Rect coordinates if they are inverted to prevent checkmark/text shifting
+            rect = annot.get('/Rect')
+            if rect:
+                x1, y1, x2, y2 = [float(val) for val in rect]
+                if x1 > x2:
+                    x1, x2 = x2, x1
+                if y1 > y2:
+                    y1, y2 = y2, y1
+                annot.update({
+                    pypdf.generic.NameObject('/Rect'): pypdf.generic.ArrayObject([
+                        pypdf.generic.FloatObject(x1),
+                        pypdf.generic.FloatObject(y1),
+                        pypdf.generic.FloatObject(x2),
+                        pypdf.generic.FloatObject(y2)
+                    ])
+                })
             
             # Checkbox values
             if t in fields_to_fill and fields_to_fill[t] == '/Yes':
@@ -465,12 +475,15 @@ def fill_pdf(lan_entry):
                     pypdf.generic.NameObject('/AS'): pypdf.generic.NameObject('/Yes')
                 })
                 
-            # Text Fields: modify /DA and remove /AP for specified fields
+            # Text Fields: modify /DA and remove /AP for specified fields to restore the 2 variants
             ft = annot.get('/FT')
             if t and ft == '/Tx':
+                resize_fields = [
+                    'LAN Entry', 'Name', 'Name_1', 'Staff No', 'Staff No_1',
+                    'Date', 'Text Field', 'Group', 'Group Code', 'Product', 'Product code',
+                    'A/C', 'Fin Year'
+                ]
                 should_resize = False
-                
-                # Check if it matches our list or is an Amount/Total field
                 if t in resize_fields or 'Amount' in t or 'Total' in t:
                     should_resize = True
                     if t == 'Text Field':
@@ -480,13 +493,23 @@ def fill_pdf(lan_entry):
                 elif 'Invoice No' in t:
                     should_resize = True
                     font_size = TEXT_FIELD_FONT_SIZE_INVOICE
-                    
+                
                 if should_resize:
                     annot.update({
                         pypdf.generic.NameObject('/DA'): pypdf.generic.TextStringObject(f"/Helvetica {font_size} Tf 0 g")
                     })
                     if '/AP' in annot:
                         del annot['/AP']
+                
+    # Flatten form fields to bake values into the page content stream
+    writer.update_page_form_field_values(page, fields_to_fill, auto_regenerate=False, flatten=True)
+    
+    # Remove interactive widget annotations (text fields and checkboxes)
+    writer.remove_annotations(subtypes="/Widget")
+    
+    # Remove AcroForm from the root catalog to make the document completely non-editable
+    if '/AcroForm' in writer.root_object:
+        del writer.root_object['/AcroForm']
                 
     # Create broadband overlay and merge it dynamically
     overlay_temp_path = os.path.join(BILLS_DIR, "temp_broadband_overlay.pdf")

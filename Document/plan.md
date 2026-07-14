@@ -80,7 +80,7 @@ The following values are parsed from the `config.cfg` file and populated on the 
 
 ---
 
-## 4. Implementation Status
+## 5. Implementation Status
 All requirements are successfully met:
 - **Configuration File Integration**: Created `config.cfg` and `config.cfg.template` files in the repository. Removed all hardcoded employee detail macros from Python.
 - **Zero-User Interaction**: Removed both the LAN Entry No and Quarter selection prompts from the command-line CLI. LAN Entry No is loaded from `config.cfg` and Quarter is detected automatically from the bills directory, enabling instant, single-run execution.
