@@ -40,6 +40,53 @@ if url in ['', 'YOUR_PRINT_MACHINE_URL', 'http://example-print-machine-url.com']
     print(f"Please set your real URL, username, and password under [PrintCredentials] in {CONFIG_FILE}.")
     sys.exit(1)
 
+def is_elf_executable(filepath):
+    """Verify that a path points to an executable ELF binary file."""
+    if not (filepath and os.path.isfile(filepath) and os.access(filepath, os.X_OK)):
+        return False
+    try:
+        with open(filepath, 'rb') as f:
+            return f.read(4) == b'\x7fELF'
+    except Exception:
+        return False
+
+def find_firefox_binary(config):
+    """
+    Locate the true Firefox ELF binary executable.
+    Prioritizes:
+    1. config.get('Browser', 'firefox_binary') or FIREFOX_BINARY env var
+    2. Ubuntu snap Firefox binary location (/snap/firefox/current/usr/lib/firefox/firefox)
+    3. Debian/Ubuntu native package location (/usr/lib/firefox/firefox)
+    4. Path resolved from shutil.which('firefox') if it is an ELF binary
+    """
+    # 1. Configured override
+    configured = ""
+    if config.has_section('Browser'):
+        configured = config.get('Browser', 'firefox_binary', fallback='').strip()
+    if not configured:
+        configured = os.environ.get('FIREFOX_BINARY', '').strip()
+
+    if configured and os.path.exists(configured):
+        return configured
+
+    # 2. Known distribution binary candidates
+    candidates = [
+        "/snap/firefox/current/usr/lib/firefox/firefox",
+        "/usr/lib/firefox/firefox",
+        "/usr/lib/firefox/firefox-bin",
+    ]
+    for candidate in candidates:
+        if is_elf_executable(candidate):
+            return candidate
+
+    # 3. Path from system PATH if it is a direct ELF binary
+    import shutil
+    which_firefox = shutil.which("firefox")
+    if which_firefox and is_elf_executable(which_firefox):
+        return which_firefox
+
+    return None
+
 def js_click(driver, element):
     driver.execute_script("arguments[0].click();", element)
 
@@ -147,6 +194,14 @@ def main():
     print("      C-DOT Telephone Bill Printer Tool")
     print("==============================================")
     
+    # Clean up any stale temporary page files from previous aborted runs
+    for f in os.listdir(BILLS_DIR):
+        if f.startswith('temp_p3_') and f.endswith('.pdf'):
+            try:
+                os.remove(os.path.join(BILLS_DIR, f))
+            except Exception:
+                pass
+
     # Scan for PDF bills (excluding templates, outputs, and temporary page-3 files)
     bills_to_process = []
     for f in sorted(os.listdir(BILLS_DIR)):
@@ -159,6 +214,13 @@ def main():
         
     print(f"Found {len(bills_to_process)} bill(s) to process.")
     
+    # Locate Firefox binary
+    firefox_binary = find_firefox_binary(config)
+    if firefox_binary:
+        print(f"Using Firefox binary: {firefox_binary}")
+    else:
+        print("Warning: No specific Firefox ELF binary found; relying on default driver resolution.")
+
     # Import WebDriver modules
     from selenium import webdriver
     from selenium.webdriver.firefox.options import Options as FirefoxOptions
@@ -185,15 +247,18 @@ def main():
         with open(temp_pdf_path, 'wb') as temp_f:
             writer.write(temp_f)
             
-        # Initialize browser session once per bill
-        firefox_options = FirefoxOptions()
-        firefox_options.add_argument("-headless")
-        
-        print(f"Starting browser session for: {f}")
-        driver = webdriver.Firefox(options=firefox_options)
-        driver.set_window_size(1920, 1080)
-        
+        driver = None
         try:
+            # Initialize browser session once per bill
+            firefox_options = FirefoxOptions()
+            firefox_options.add_argument("-headless")
+            if firefox_binary:
+                firefox_options.binary_location = firefox_binary
+            
+            print(f"Starting browser session for: {f}")
+            driver = webdriver.Firefox(options=firefox_options)
+            driver.set_window_size(1920, 1080)
+            
             max_retries = 3
             success = False
             for attempt in range(1, max_retries + 1):
@@ -222,8 +287,12 @@ def main():
                 print(f"[Error] Failed to print '{f}' after {max_retries} attempts.")
         finally:
             # Close browser session
-            print("Closing browser session...")
-            driver.quit()
+            if driver is not None:
+                print("Closing browser session...")
+                try:
+                    driver.quit()
+                except Exception:
+                    pass
             
             # Delete temporary file
             if os.path.exists(temp_pdf_path):
