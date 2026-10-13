@@ -34,8 +34,8 @@ graph TD
 ### 1.2 Component Subsystems
 1. **Configuration Reader**: Reads printer web app credentials (`url`, `username`, `password`), print settings (`page_number`, `printer`), and optional `[Browser]` settings (`firefox_binary`) from `print_config.cfg`.
 2. **Binary Auto-Discovery Subsystem**: Inspects candidates (`/snap/firefox/current/usr/lib/firefox/firefox`, `/usr/lib/firefox/firefox`, `which firefox`) and verifies the 4-byte ELF magic header (`\x7fELF`) to bypass shell script wrappers (`/usr/bin/firefox`).
-3. **Batch Scanner**: Lists all `.pdf` invoices in the blank `telephone_bill/` directory, ignoring templates, output claim files, and temporary buffers.
-4. **PDF Extractor & Isolated Buffer Management**: Extracts the configured page (`PAGE_NUMBER - 1`) using `pypdf`, buffered in `templates/` and enclosed within strict `try ... finally` blocks to guarantee file removal on abort or crash.
+3. **Batch Scanner & Queue Partitioning**: Lists all `.pdf` invoices in the blank `telephone_bill/` directory, partitioning regular bills (targeted to configured `page_number`) and generated claim reimbursement forms (`filled_claim_*.pdf`, targeted strictly to constant page `1`).
+4. **PDF Extractor & Isolated Buffer Management**: Extracts the designated page (`target_page - 1`) using `pypdf`, buffered in `templates/` and enclosed within strict `try ... finally` blocks to guarantee file removal on abort or crash.
 5. **Driver Manager & Lifecycle Controller**: Binds the resolved ELF binary to `FirefoxOptions.binary_location`, provisions headless display options, sets viewport bounds (1920x1080), and handles retries with screenshot captures on failure.
 6. **Telemetry Engine**: Outputs strictly filtered logs displaying only the file name, extracted page number, and selected printer name (`[Success] File: ... | Page: ... | Printer: ...`).
 
@@ -76,7 +76,7 @@ username = your_username
 password = your_password
 
 [PrintSettings]
-# Target page number to extract (1-indexed, default is 3)
+# Target page number to extract from invoices (1-indexed, default is 3)
 page_number = 3
 # Destination printer identifier (default is 7tf)
 printer = 7tf
@@ -127,3 +127,4 @@ firefox_binary = /snap/firefox/current/usr/lib/firefox/firefox
 | **TEST-CFG-PAGE-04** | Dynamic Page Extraction Config | Configure `page_number = 3` in `print_config.cfg` and verify dynamic extraction of `pages[PAGE_NUMBER - 1]`. | **PASSED** (Dynamically loaded and validated) |
 | **TEST-TELEMETRY-05** | Reduced Logging Verification | Validate stdout outputs exclusively `File: <file> \| Page: <page> \| Printer: <printer>` without intermediate browser chatter. | **PASSED** (Clean output verified) |
 | **TEST-ISOLATION-06** | Folder Isolation Check | Verify `telephone_bill/` contains only user bills and `templates/` houses PDF and config templates. | **PASSED** (`telephone_bill/` cleanly separated) |
+| **TEST-CLAIM-07** | Claim Form Queue Append | Verify `filled_claim_*.pdf` is included at the end of the print queue with constant target page `1`. | **PASSED** (7 jobs queued: 6 bills on p3 + 1 claim on p1) |

@@ -51,6 +51,8 @@ elif config.has_option('PrintCredentials', 'page_number'):
 if PAGE_NUMBER < 1:
     PAGE_NUMBER = 1
 
+CLAIM_PAGE_NUMBER = 1
+
 PRINTER_NAME = "7tf"
 if config.has_section('PrintSettings') and config.has_option('PrintSettings', 'printer'):
     PRINTER_NAME = config.get('PrintSettings', 'printer', fallback='7tf').strip()
@@ -214,14 +216,20 @@ def main():
                 except Exception:
                     pass
 
-    # Scan for PDF bills (excluding templates, outputs, and temporary page files)
-    bills_to_process = []
+    # Scan for PDF bills and generated claim forms
+    invoices = []
+    claims = []
     for f in sorted(os.listdir(BILLS_DIR)):
-        if f.endswith('.pdf') and f not in [os.path.basename(TEMPLATE_PDF), 'template.pdf', 'template_bk.pdf', 'jan_mar_26.pdf', 'tst.pdf'] and not f.startswith('filled_claim_') and not f.startswith('temp_p'):
-            bills_to_process.append(f)
+        if f.endswith('.pdf') and f not in [os.path.basename(TEMPLATE_PDF), 'template.pdf', 'template_bk.pdf', 'jan_mar_26.pdf', 'tst.pdf'] and not f.startswith('temp_p'):
+            if f.startswith('filled_claim_'):
+                claims.append(f)
+            else:
+                invoices.append(f)
             
-    if not bills_to_process:
-        print(f"No bill invoices found in '{BILLS_DIR}/' folder.")
+    jobs_to_process = [(f, PAGE_NUMBER) for f in invoices] + [(f, CLAIM_PAGE_NUMBER) for f in claims]
+
+    if not jobs_to_process:
+        print(f"No bill invoices or claim files found in '{BILLS_DIR}/' folder.")
         print(f"Please place your PDF bills in the blank '{BILLS_DIR}/' directory.")
         return
 
@@ -232,28 +240,28 @@ def main():
     from selenium import webdriver
     from selenium.webdriver.firefox.options import Options as FirefoxOptions
     
-    for f in bills_to_process:
+    for f, target_page in jobs_to_process:
         bill_path = os.path.join(BILLS_DIR, f)
         
         # Extract the target page
         reader = pypdf.PdfReader(bill_path)
-        if len(reader.pages) < PAGE_NUMBER:
-            print(f"[Skipped] File: {f} | Page: {PAGE_NUMBER} (Document only has {len(reader.pages)} pages) | Printer: {PRINTER_NAME}")
+        if len(reader.pages) < target_page:
+            print(f"[Skipped] File: {f} | Page: {target_page} (Document only has {len(reader.pages)} pages) | Printer: {PRINTER_NAME}")
             continue
             
         # Create a temporary PDF containing only the specified page
-        temp_pdf_name = f"temp_p{PAGE_NUMBER}_{f}"
+        temp_pdf_name = f"temp_p{target_page}_{f}"
         temp_pdf_path = os.path.join(temp_dir, temp_pdf_name)
         
         writer = pypdf.PdfWriter()
-        writer.add_page(reader.pages[PAGE_NUMBER - 1])  # 1-indexed to 0-indexed
+        writer.add_page(reader.pages[target_page - 1])  # 1-indexed to 0-indexed
         
         with open(temp_pdf_path, 'wb') as temp_f:
             writer.write(temp_f)
             
         driver = None
         try:
-            # Initialize browser session once per bill
+            # Initialize browser session once per file
             firefox_options = FirefoxOptions()
             firefox_options.add_argument("-headless")
             if firefox_binary:
@@ -284,9 +292,9 @@ def main():
                         time.sleep(5)
             
             if success:
-                print(f"[Success] File: {f} | Page: {PAGE_NUMBER} | Printer: {PRINTER_NAME}")
+                print(f"[Success] File: {f} | Page: {target_page} | Printer: {PRINTER_NAME}")
             else:
-                print(f"[Failed] File: {f} | Page: {PAGE_NUMBER} | Printer: {PRINTER_NAME} - Error: {last_err}")
+                print(f"[Failed] File: {f} | Page: {target_page} | Printer: {PRINTER_NAME} - Error: {last_err}")
         finally:
             # Close browser session
             if driver is not None:

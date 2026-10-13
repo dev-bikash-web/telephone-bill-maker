@@ -6,8 +6,8 @@ Automate extracting the 3rd page of all PDF invoices and uploading/submitting th
 
 ## Features
 * **Separate Configuration**: Printer URL and credentials (username, password) are loaded from a dedicated configuration file (`print_config.cfg`) separate from the filler tool.
-* **Configurable Page & Printer Selection**: Target page number (`page_number`, default `3`) and printer name (`printer`, default `7tf`) can be configured directly in `print_config.cfg`.
-* **Dynamic Page Extraction**: Uses `pypdf` to extract the configured page of each PDF invoice in the blank `telephone_bill/` directory, saving it to a temporary PDF buffer for printing.
+* **Configurable Page & Printer Selection**: Target invoice page number (`page_number`, default `3`) and printer name (`printer`, default `7tf`) can be configured directly in `print_config.cfg`.
+* **Dynamic Page & Claim Extraction**: Uses `pypdf` to extract the configured page of each PDF invoice (e.g. page 3) and the final claim reimbursement PDF (`filled_claim_{quarter}.pdf`, always page 1) in `telephone_bill/`, saving temporary PDF buffers for printing.
 * **Fully Automated Selenium Workflow**: Handles browser navigation, login, printer selection (`7tf`), pages option (`custom`), document upload, submission, verification, and browser closing.
 * **Streamlined Telemetry Output**: Clean, minimal console logging that outputs only the file name, page number, and printer details (`[Success] File: <file> | Page: <page> | Printer: <printer>`).
 * **Headless Compatibility**: Detects if a display server is running and automatically falls back to headless mode to prevent crashes in non-graphic server environments.
