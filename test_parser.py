@@ -83,7 +83,7 @@ def parse_bill(pdf_path):
 
 bills_dir = 'telephone_bill'
 for f in sorted(os.listdir(bills_dir)):
-    if f.endswith('.pdf') and f not in ['template.pdf', 'jan_mar_26.pdf']:
+    if f.endswith('.pdf') and f not in ['template.pdf', 'jan_mar_26.pdf'] and not f.startswith('filled_claim_'):
         path = os.path.join(bills_dir, f)
         res = parse_bill(path)
         print(f"{res['filename']}: Type={res['type']}, Month={res['month']}, Provider={res['provider']}, Invoice={res['invoice_no']}, Amount={res['amount']}")

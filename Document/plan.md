@@ -3,21 +3,21 @@
 This plan outlines the design and implementation details for programmatically parsing telephone bills and filling out the C-DOT reimbursement template (`template.pdf`).
 
 ## 1. Project Goal
-Automate the extraction of billing details from PDF files in the `telephone_bill` directory and populate the corresponding fields of the interactive PDF form (`template.pdf`).
+Automate the extraction of billing details from PDF files in the blank `telephone_bill/` directory and populate the corresponding fields of the interactive PDF form template (`templates/template.pdf`).
 
 ## 2. Technical Approach
 We wrote a Python script ([make_bill.py](file:///home/bikash/workera/personal_git/telephone-bill-maker/make_bill.py)) in the workspace that performs the following steps:
 1. **Load Configuration**:
-   - Check if the configuration file `config.cfg` exists.
+   - Check if the configuration file `config.cfg` exists (with template reference in `templates/config.cfg.template`).
    - Parse employee details (Name, Staff No, Group, Product, Bank Account) and LAN Entry No from `config.cfg` using Python's native `configparser` module.
-   - If not found, instruct the user to copy the reference template `config.cfg.template` to `config.cfg` and configure their details.
+   - If not found, instruct the user to copy the reference template `templates/config.cfg.template` to `config.cfg` and configure their details.
    - Validate that all required configuration fields are filled. If any field is empty or missing, print the errors and exit immediately before running.
    
    > [!TIP]
    > Spaces before or after the `=` sign in `config.cfg` are ignored by the parser. Both `name = Value` and `name=Value` are valid and parsed identically.
 
 2. **Bill Parsing & Auto Quarter Detection**: 
-   - Scan the `telephone_bill` directory for PDF bills (excluding templates and outputs).
+   - Scan the blank `telephone_bill/` directory for PDF bills (system templates are stored separately in `templates/`).
    - Use `pdftotext` to extract text from each bill.
    - Run regular expressions on the text to extract the Provider Name, Bill/Invoice No, Amount Payable, and Bill Month.
    - Classify bills dynamically based solely on keyword scanning (first 2000 characters of text and filename) instead of hardcoded prefix rules (like `HF`/`MF`):

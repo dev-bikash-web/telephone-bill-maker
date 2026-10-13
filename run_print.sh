@@ -25,7 +25,12 @@ echo "Checking dependencies..."
 # Ensure print_config.cfg exists
 if [ ! -f "print_config.cfg" ]; then
     echo "Warning: 'print_config.cfg' not found."
-    if [ -f "print_config.cfg.template" ]; then
+    if [ -f "templates/print_config.cfg.template" ]; then
+        echo "Creating 'print_config.cfg' from template..."
+        cp templates/print_config.cfg.template print_config.cfg
+        echo "Please configure your credentials in 'print_config.cfg' and run the tool again."
+        exit 1
+    elif [ -f "print_config.cfg.template" ]; then
         echo "Creating 'print_config.cfg' from template..."
         cp print_config.cfg.template print_config.cfg
         echo "Please configure your credentials in 'print_config.cfg' and run the tool again."

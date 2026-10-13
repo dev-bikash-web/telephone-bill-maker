@@ -6,7 +6,7 @@ This document details the software architecture, data mapping rules, and design 
 
 ## 1. System Overview
 
-The tool is a utility designed to automate the process of parsing digital telephone invoices and populating a standard C-DOT reimbursement PDF template (`template.pdf`).
+The tool is a utility designed to automate the process of parsing digital telephone invoices and populating a standard C-DOT reimbursement PDF template (`templates/template.pdf`).
 
 ---
 
@@ -17,12 +17,13 @@ The tool is built with a modular pipeline structure in [make_bill.py](file:///ho
 ```mermaid
 graph TD
     CFG[config.cfg] -->|1. Parse Employee & LAN Details| CLI[make_bill.py: main]
-    BillsDir[telephone_bill/*.pdf] -->|Invoice Files| Parser[parse_bill]
+    TplDir[templates/template.pdf] -->|Template Ingestion| FormFiller[fill_pdf Engine]
+    BillsDir[telephone_bill/*.pdf (Blank User Ingestion)] -->|User Invoice Files| Parser[parse_bill]
     
     Parser -->|1. Extract Text| TextEng[pdftotext Engine]
     Parser -->|2. Regex Parsing| RegexEng[Regex Matcher]
     
-    CLI -->|Config / Map| FormFiller[fill_pdf Engine]
+    CLI -->|Config / Map| FormFiller
     RegexEng -->|Parsed Invoice Info| FormFiller
     
     FormFiller -->|3. Populate Form Fields| PyPDF[pypdf Form Writer]
@@ -31,7 +32,7 @@ graph TD
     PyPDF -->|Merged PDF Document| Merger[pypdf Page Merger]
     ReportLab -->|Stamp Overlay PDF| Merger
     
-    Merger -->|5. Save Output| OutputPDF[filled_claim_Quarter.pdf]
+    Merger -->|5. Save Output| OutputPDF[telephone_bill/filled_claim_Quarter.pdf]
 ```
 
 ### Components Description:

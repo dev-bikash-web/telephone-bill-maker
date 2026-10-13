@@ -11,7 +11,10 @@ import configparser
 # ==============================================================================
 # Folder and File Paths
 BILLS_DIR = "telephone_bill"
-TEMPLATE_PDF = os.path.join(BILLS_DIR, "template.pdf")
+TEMPLATES_DIR = "templates"
+TEMPLATE_PDF = os.path.join(TEMPLATES_DIR, "template.pdf")
+if not os.path.exists(TEMPLATE_PDF) and os.path.exists(os.path.join(BILLS_DIR, "template.pdf")):
+    TEMPLATE_PDF = os.path.join(BILLS_DIR, "template.pdf")
 OUTPUT_PDF_TEMPLATE = os.path.join(BILLS_DIR, "filled_claim_{quarter}.pdf")
 
 # Overlay text coordinates for writing "Broadband" on rightmost side above the dash
@@ -34,7 +37,7 @@ config_file = 'config.cfg'
 
 if not os.path.exists(config_file):
     print(f"Error: Configuration file '{config_file}' not found.")
-    print("Please copy 'config.cfg.template' to 'config.cfg' and configure your details.")
+    print("Please copy 'templates/config.cfg.template' (or 'config.cfg.template') to 'config.cfg' and configure your details.")
     sys.exit(1)
 
 config.read(config_file)
@@ -237,29 +240,49 @@ def create_broadband_overlay(output_path):
     c.save()
 
 def fill_pdf(lan_entry):
+    # Ensure bills directory exists
+    if not os.path.exists(BILLS_DIR):
+        print(f"Error: Directory '{BILLS_DIR}' does not exist.")
+        return
+
+    # Check if template exists
+    if not os.path.exists(TEMPLATE_PDF):
+        print(f"Error: Template PDF not found at {TEMPLATE_PDF}")
+        return
+
     # 1. Parse all bills in bills directory
+    pdf_files = [
+        f for f in sorted(os.listdir(BILLS_DIR))
+        if f.endswith('.pdf')
+        and f not in [os.path.basename(TEMPLATE_PDF), 'jan_mar_26.pdf', 'template_bk.pdf', 'tst.pdf']
+        and not f.startswith('filled_claim_')
+    ]
+
+    if not pdf_files:
+        print(f"No bill invoices found in '{BILLS_DIR}/' folder.")
+        print(f"Please place your PDF bills in the blank '{BILLS_DIR}/' directory.")
+        return
+
     parsed_bills = []
-    for f in sorted(os.listdir(BILLS_DIR)):
-        # Skip template, backup files, example files, and output files
-        if f.endswith('.pdf') and f not in [os.path.basename(TEMPLATE_PDF), 'jan_mar_26.pdf', 'template_bk.pdf', 'tst.pdf'] and not f.startswith('filled_claim_'):
-            bill_info = parse_bill(os.path.join(BILLS_DIR, f))
+    for f in pdf_files:
+        bill_info = parse_bill(os.path.join(BILLS_DIR, f))
+        
+        # Print warnings for missing fields
+        missing_fields = []
+        if not bill_info['provider']:
+            missing_fields.append('Provider Name')
+        if not bill_info['invoice_no']:
+            missing_fields.append('Invoice/Bill No')
+        if bill_info['amount'] is None:
+            missing_fields.append('Amount')
+        if not bill_info['month']:
+            missing_fields.append('Billing Month')
             
-            # Print warnings for missing fields
-            missing_fields = []
-            if not bill_info['provider']:
-                missing_fields.append('Provider Name')
-            if not bill_info['invoice_no']:
-                missing_fields.append('Invoice/Bill No')
-            if bill_info['amount'] is None:
-                missing_fields.append('Amount')
-            if not bill_info['month']:
-                missing_fields.append('Billing Month')
-                
-            if missing_fields:
-                print(f"Warning: In bill '{f}', the following fields were not found: {', '.join(missing_fields)}")
-                
-            # Keep all bills in the list, even if details are missing (filled as blank / None)
-            parsed_bills.append(bill_info)
+        if missing_fields:
+            print(f"Warning: In bill '{f}', the following fields were not found: {', '.join(missing_fields)}")
+            
+        # Keep all bills in the list, even if details are missing (filled as blank / None)
+        parsed_bills.append(bill_info)
             
     # 2. Automatically analyze the quarter from the parsed bills
     quarter_month_mapping = {
@@ -512,7 +535,8 @@ def fill_pdf(lan_entry):
         del writer.root_object['/AcroForm']
                 
     # Create broadband overlay and merge it dynamically
-    overlay_temp_path = os.path.join(BILLS_DIR, "temp_broadband_overlay.pdf")
+    overlay_temp_dir = TEMPLATES_DIR if os.path.exists(TEMPLATES_DIR) else BILLS_DIR
+    overlay_temp_path = os.path.join(overlay_temp_dir, "temp_broadband_overlay.pdf")
     create_broadband_overlay(overlay_temp_path)
     
     overlay_reader = pypdf.PdfReader(overlay_temp_path)

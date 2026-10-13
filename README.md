@@ -22,9 +22,9 @@ Automate the extraction of billing details from PDF invoices and populate the st
 
 1. **System Requirements**: Make sure you have `python3` and `pdftotext` installed on your system.
    * On Debian/Ubuntu: `sudo apt install poppler-utils`
-2. **Configuration**: Copy the template file `config.cfg.template` to `config.cfg` and populate your personal details:
+2. **Configuration**: Copy the template file `templates/config.cfg.template` to `config.cfg` and populate your personal details:
    ```bash
-   cp config.cfg.template config.cfg
+   cp templates/config.cfg.template config.cfg
    ```
    Open `config.cfg` and fill in your variables:
    ```ini
@@ -45,14 +45,14 @@ Automate the extraction of billing details from PDF invoices and populate the st
 
 ## Usage
 
-1. Put your PDF bills in the `telephone_bill/` directory.
+1. Put your PDF bills in the blank `telephone_bill/` directory (form templates are stored separately in `templates/`).
 2. Run the filler tool:
    ```bash
    ./run.sh
    ```
 3. The tool will automatically:
    * Load and validate your `config.cfg`.
-   * Parse the bills in the folder and detect the billing quarter (e.g. `Q1`).
+   * Parse the bills in the folder and detect the billing quarter (e.g. `Q2`).
    * Output the populated claim PDF at `telephone_bill/filled_claim_[Quarter].pdf`.
 
 ---
