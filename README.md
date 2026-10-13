@@ -45,6 +45,7 @@ Automate the extraction of billing details from PDF invoices and populate the st
 
 ## Usage
 
+### 1. Generate Reimbursement Claim Form
 1. Put your PDF bills in the blank `telephone_bill/` directory (form templates are stored separately in `templates/`).
 2. Run the filler tool:
    ```bash
@@ -55,10 +56,16 @@ Automate the extraction of billing details from PDF invoices and populate the st
    * Parse the bills in the folder and detect the billing quarter (e.g. `Q2`).
    * Output the populated claim PDF at `telephone_bill/filled_claim_[Quarter].pdf`.
 
+### 2. Verify Bills & Calculate Totals (Diagnostic Mode)
+To inspect parsed invoice metadata and check connection subtotals and grand totals in logs without modifying any files:
+```bash
+./test_calculate_bill.sh
+```
+
 ---
 
 ## Project Documentation
 More details about the technical layout can be found in the `Document/` folder:
 * **Architecture Design**: [Document/architecture_design.md](file:///home/bikash/workera/personal_git/telephone-bill-maker/Document/architecture_design.md)
 * **Project Plan**: [Document/plan.md](file:///home/bikash/workera/personal_git/telephone-bill-maker/Document/plan.md)
-* **Parser Diagnostics Tool (`test_parser.py`)**: [Document/test_parser.md](file:///home/bikash/workera/personal_git/telephone-bill-maker/Document/test_parser.md)
+* **Parser & Calculation Diagnostics Tool**: [Document/test_parser.md](file:///home/bikash/workera/personal_git/telephone-bill-maker/Document/test_parser.md)

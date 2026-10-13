@@ -82,8 +82,43 @@ def parse_bill(pdf_path):
     }
 
 bills_dir = 'telephone_bill'
-for f in sorted(os.listdir(bills_dir)):
-    if f.endswith('.pdf') and f not in ['template.pdf', 'jan_mar_26.pdf'] and not f.startswith('filled_claim_'):
-        path = os.path.join(bills_dir, f)
-        res = parse_bill(path)
-        print(f"{res['filename']}: Type={res['type']}, Month={res['month']}, Provider={res['provider']}, Invoice={res['invoice_no']}, Amount={res['amount']}")
+connection_totals = {}
+connection_counts = {}
+grand_total = 0.0
+total_bills = 0
+
+if not os.path.exists(bills_dir):
+    print(f"Directory '{bills_dir}' does not exist.")
+    exit(1)
+
+eligible_files = [
+    f for f in sorted(os.listdir(bills_dir))
+    if f.endswith('.pdf') and f not in ['template.pdf', 'jan_mar_26.pdf'] and not f.startswith('filled_claim_')
+]
+
+for f in eligible_files:
+    path = os.path.join(bills_dir, f)
+    res = parse_bill(path)
+    amt_str = f"{res['amount']:.2f}" if res['amount'] is not None else "None"
+    print(f"{res['filename']}: Type={res['type']}, Month={res['month']}, Provider={res['provider']}, Invoice={res['invoice_no']}, Amount={amt_str}")
+    
+    b_type = res['type'] or 'Unknown'
+    if res['amount'] is not None:
+        connection_totals[b_type] = connection_totals.get(b_type, 0.0) + res['amount']
+        connection_counts[b_type] = connection_counts.get(b_type, 0) + 1
+        grand_total += res['amount']
+        total_bills += 1
+    else:
+        print(f"  [WARNING] Could not parse amount for {res['filename']}")
+
+print("\n" + "=" * 55)
+print("                 BILLING SUMMARY")
+print("=" * 55)
+if connection_totals:
+    for conn_type in sorted(connection_totals.keys()):
+        print(f"  {conn_type:<15} : ₹{connection_totals[conn_type]:>10,.2f}  ({connection_counts[conn_type]} bills)")
+    print("-" * 55)
+    print(f"  {'Grand Total':<15} : ₹{grand_total:>10,.2f}  ({total_bills} bills)")
+else:
+    print("  No eligible bills found.")
+print("=" * 55)
