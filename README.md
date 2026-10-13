@@ -29,14 +29,14 @@ Automate the extraction of billing details from PDF invoices and populate the st
    Open `config.cfg` and fill in your variables:
    ```ini
    [EmployeeDetails]
-   lan_entry = MITLM29098
-   name = BIKASH ROUT
-   staff_no = 6171
-   group_name = SRSW
-   group_code = 3YA
-   product_name = 5G NON SA
-   product_code = G06
-   bank_account_no = 110137962434
+   lan_entry = MITLM00000
+   name = FIRSTNAME LASTNAME
+   staff_no = 0000
+   group_name = YOUR_GROUP
+   group_code = 0XX
+   product_name = YOUR_PRODUCT
+   product_code = X00
+   bank_account_no = 000000000000
    ```
    > [!NOTE]
    > Spacing before or after the `=` sign does not matter. The parser automatically trims leading and trailing spaces for both keys and values.

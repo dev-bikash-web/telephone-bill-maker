@@ -98,13 +98,13 @@ The table below lists the interactive PDF form fields mapped by the tool:
 | Field Name | Type | Section / Key in CFG | Description / Mapping Logic |
 | :--- | :--- | :--- | :--- |
 | **LAN Entry** | Text | `[EmployeeDetails] lan_entry` | User's LAN Entry No. |
-| **Name** | Text | `[EmployeeDetails] name` | BIKASH ROUT |
-| **Staff No** | Text | `[EmployeeDetails] staff_no` | 6171 |
+| **Name** | Text | `[EmployeeDetails] name` | Employee Name |
+| **Staff No** | Text | `[EmployeeDetails] staff_no` | Employee Staff No |
 | **Date** | Text | Today's Date | Formatted as `DD-MM-YYYY` |
-| **Group** | Text | `[EmployeeDetails] group_name` | SRSW |
-| **Group Code** | Text | `[EmployeeDetails] group_code` | 3YA |
-| **Product** | Text | `[EmployeeDetails] product_name` | 5G NON SA |
-| **Product code** | Text | `[EmployeeDetails] product_code` | G06 |
+| **Group** | Text | `[EmployeeDetails] group_name` | Group Name |
+| **Group Code** | Text | `[EmployeeDetails] group_code` | Group Code |
+| **Product** | Text | `[EmployeeDetails] product_name` | Product Name |
+| **Product code** | Text | `[EmployeeDetails] product_code` | Product Code |
 | **A/C** | Text | `[EmployeeDetails] bank_account_no` | Bank Account No. |
 | **Fin Year** | Text | Current Year | Dynamic current year |
 | **Name_1** | Text | `[EmployeeDetails] name` | Signature area name |
