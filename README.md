@@ -61,3 +61,4 @@ Automate the extraction of billing details from PDF invoices and populate the st
 More details about the technical layout can be found in the `Document/` folder:
 * **Architecture Design**: [Document/architecture_design.md](file:///home/bikash/workera/personal_git/telephone-bill-maker/Document/architecture_design.md)
 * **Project Plan**: [Document/plan.md](file:///home/bikash/workera/personal_git/telephone-bill-maker/Document/plan.md)
+* **Parser Diagnostics Tool (`test_parser.py`)**: [Document/test_parser.md](file:///home/bikash/workera/personal_git/telephone-bill-maker/Document/test_parser.md)
