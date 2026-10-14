@@ -12,9 +12,10 @@ Automate the extraction of billing details from PDF invoices and populate the st
 * **Vendor-Agnostic Parsing**: Dynamically extracts billing month, invoice number, payable totals, and provider names from bills representing various providers (Airtel, Jio, BSNL, Vodafone, MTNL, etc.) using regex and text patterns.
 * **Graceful Missing Data Handling**: Missing details (such as a missing invoice number or amount) are rendered as blank spaces on the PDF form instead of causing crashes.
 * **Auto Quarter Detection**: Automatically analyzes the invoice months present in your `telephone_bill` directory, maps them to the correct financial quarter (`Q1`–`Q4`), and selects the appropriate mapping without prompting the user.
-* **Missing Month Safeguard**: If any billing month in the detected quarter has zero bills, the script prints a warning and prompts you dynamically to proceed (leaving the month blank) or exit.
+* **Non-Interactive Missing Month Safeguard**: If any billing month in the detected quarter has zero bills, the script logs an informative warning and automatically proceeds with filling the remaining months without blocking execution.
+* **Bundled & Combo Statements (`--single-bill`)**: Supports multi-service combo statements (such as Airtel Black containing both Wi-Fi/Broadband and Mobile tax invoices) via page separation and targeted `Bill NO` anchoring.
 * **Box 2 Diagonal Strike-Through**: Automatically draws a diagonal "X" strike-through across Box 2 (Landline) to invalidate it.
-* **Visual Precision styling**: Keeps all form fonts exactly as styled in the template, while dynamically resizing long `Invoice No` fields and the signature `Text Field` to `7.5pt` to fit their cells perfectly.
+* **Visual Precision Styling**: Keeps all form fonts exactly as styled in the template, while dynamically resizing long `Invoice No` fields and the signature `Text Field` to `7.5pt` to fit their cells perfectly.
 
 ---
 
@@ -45,22 +46,44 @@ Automate the extraction of billing details from PDF invoices and populate the st
 
 ## Usage
 
-### 1. Generate Reimbursement Claim Form
-1. Put your PDF bills in the blank `telephone_bill/` directory (form templates are stored separately in `templates/`).
-2. Run the filler tool:
-   ```bash
-   ./run.sh
-   ```
-3. The tool will automatically:
-   * Load and validate your `config.cfg`.
-   * Parse the bills in the folder and detect the billing quarter (e.g. `Q2`).
-   * Output the populated claim PDF at `telephone_bill/filled_claim_[Quarter].pdf`.
+### 1. Mode A: Separate Individual Bills (Default)
+Use this default mode when your `telephone_bill/` directory contains individual, separate PDF files for each service (e.g. separate Postpaid Mobile bills and separate Broadband bills).
 
-### 2. Verify Bills & Calculate Totals (Diagnostic Mode)
-To inspect parsed invoice metadata and check connection subtotals and grand totals in logs without modifying any files:
-```bash
-./test_calculate_bill.sh
-```
+* **Generate Reimbursement Claim Form**:
+  ```bash
+  ./run.sh
+  ```
+  Automatically detects the billing quarter, fills Box 1 (Mobile) and Box 3 (Broadband), applies the Box 2 strike-through overlay, and saves the output at `telephone_bill/filled_claim_[Quarter].pdf`.
+
+* **Verify Bills & Calculate Totals (Diagnostic Mode)**:
+  ```bash
+  ./test_calculate_bill.sh
+  ```
+  Inspects parsed invoice metadata and streams connection subtotals and grand totals to terminal logs without modifying any files.
+
+---
+
+### 2. Mode B: Combined / Bundled Statements (`--single-bill`)
+Use the `--single-bill` flag when you have multi-service combo statements (e.g. **Airtel Black** statements containing both Wi-Fi/Broadband and Mobile tax invoices bundled inside the same PDF file).
+
+* **Generate Reimbursement Claim Form**:
+  ```bash
+  ./run.sh --single-bill
+  ```
+  Separates the invoice pages, extracts both Wi-Fi and Mobile tax invoices, resolves the billing period start month, and populates the claim form.
+
+* **Verify Bills & Calculate Totals (Diagnostic Mode)**:
+  ```bash
+  ./test_calculate_bill.sh --single-bill
+  ```
+  Separates the pages, extracts all independent sub-bills (anchored directly to `Bill NO` and `Total Amount`), and displays the full billing breakdown in the logs.
+
+> [!TIP]
+> You can also make `--single-bill` the default by adding `single_bill = true` under a `[General]` section in your `config.cfg`:
+> ```ini
+> [General]
+> single_bill = true
+> ```
 
 ---
 
