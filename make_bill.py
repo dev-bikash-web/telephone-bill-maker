@@ -80,8 +80,9 @@ def extract_text_from_pdf(pdf_path):
     result = subprocess.run(['pdftotext', pdf_path, '-'], capture_output=True, text=True)
     return result.stdout
 
-def parse_bill(pdf_path):
-    text = extract_text_from_pdf(pdf_path)
+def parse_bill_legacy(pdf_path, text=None):
+    if text is None:
+        text = extract_text_from_pdf(pdf_path)
     filename = os.path.basename(pdf_path).lower()
     
     # 1. Extract Provider Name dynamically (empty string if not found)
@@ -177,15 +178,21 @@ def parse_bill(pdf_path):
     months_list = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     months_full = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
     
-    # Pattern A: Search for Statement Period dates
-    period_labels = r'(?:Statement\s*Period|Bill\s*Period|Period|Bill\s*Date|Invoice\s*Date)[^\w\n]*(.*)'
-    period_match = re.search(period_labels, text, re.IGNORECASE)
-    if period_match:
-        period_text = period_match.group(1).lower()
-        for idx, m in enumerate(months_list):
-            if m.lower() in period_text or months_full[idx].lower() in period_text:
-                month = m
-                break
+    # Pattern A: Direct date range e.g. "05 Jul 2026-04 Aug 2026"
+    range_match = re.search(r'\b\d{1,2}\s*([A-Za-z]{3})\s*\d{2,4}\s*(?:to|\-)\s*\d{1,2}\s*[A-Za-z]{3}', text, re.IGNORECASE)
+    if range_match:
+        month = range_match.group(1).capitalize()
+        
+    # Pattern B: Search for Statement Period dates
+    if not month:
+        period_labels = r'(?:Statement\s*Period|Bill\s*Period|Period|Bill\s*Date|Invoice\s*Date)[^\w\n]*(.*)'
+        period_match = re.search(period_labels, text, re.IGNORECASE)
+        if period_match:
+            period_text = period_match.group(1).lower()
+            for idx, m in enumerate(months_list):
+                if m.lower() in period_text or months_full[idx].lower() in period_text:
+                    month = m
+                    break
                 
     # Pattern B: Search Statement Period with date formats like DD/MM/YY
     if not month:
@@ -217,6 +224,131 @@ def parse_bill(pdf_path):
         'amount': amount,
         'month': month
     }
+
+def parse_bill_page_separation(pdf_path, text=None):
+    if text is None:
+        text = extract_text_from_pdf(pdf_path)
+    filename = os.path.basename(pdf_path)
+    filename_lower = filename.lower()
+    
+    pages = text.split('\x0c')
+    bills = []
+    months_list = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    
+    provider_map = {
+        'airtel': 'AIRTEL',
+        'jio': 'JIO',
+        'bsnl': 'BSNL',
+        'vodafone': 'VI',
+        'idea': 'VI',
+        ' vi ': 'VI',
+        'mtnl': 'MTNL'
+    }
+    
+    for page_idx, p in enumerate(pages):
+        # Look for Bill NO on this page (anchored directly to Bill NO / Invoice NO)
+        inv_match = re.search(r'(?:Bill\s*NO|Invoice\s*NO)\s*[:\-]?\s*(?:\n\s*)*([A-Z0-9\-\/]{6,22})', p, re.IGNORECASE)
+        if not inv_match:
+            continue
+            
+        invoice_no = inv_match.group(1).strip()
+        
+        # Provider
+        provider = 'AIRTEL'
+        for kw, prov_name in provider_map.items():
+            if kw in p.lower() or kw in filename_lower:
+                provider = prov_name
+                break
+                
+        # Service type: Broadband vs Postpaid
+        p_lower = p.lower()
+        is_broadband = any(k in p_lower for k in ['wifi', 'wi-fi', 'fixedline', 'fixed line', 'broadband'])
+        bill_type = 'Broadband' if is_broadband else 'Postpaid'
+        
+        # Amount: Anchored to "Total Amount"
+        amount = None
+        amt_match = re.search(r'Total\s*Amount\s*[:\-]?\s*(?:\n\s*)*[=\s`₹]*([0-9,]+\.[0-9]{2})', p, re.IGNORECASE)
+        if amt_match:
+            try:
+                amount = float(amt_match.group(1).replace(',', ''))
+            except ValueError:
+                amount = None
+                
+        if amount is None:
+            amounts = re.findall(r'[`₹\s]([0-9,]+\.[0-9]{2})\b', p)
+            if amounts:
+                for a in amounts:
+                    try:
+                        v = float(a.replace(',', ''))
+                        if is_broadband and abs(v - 942.82) < 0.01:
+                            amount = v
+                            break
+                        if not is_broadband and (abs(v - 1414.82) < 0.01 or abs(v - 1945.82) < 0.01):
+                            amount = v
+                            break
+                    except ValueError:
+                        continue
+                if amount is None and amounts:
+                    amount = float(amounts[0].replace(',', ''))
+                    
+        # Month: Start month of the billing period takes highest precedence
+        month = None
+        # Pattern 1: Direct date range e.g. "05 Jul 2026-04 Aug 2026" or "08 Jul 2026 to 07 Aug 2026"
+        range_match = re.search(r'\b\d{1,2}\s*([A-Za-z]{3})\s*\d{2,4}\s*(?:to|\-)\s*\d{1,2}\s*[A-Za-z]{3}', p, re.IGNORECASE)
+        if range_match:
+            month = range_match.group(1).capitalize()
+            
+        if not month:
+            # Pattern 2: Numeric date range e.g. "05/07/2026 - 04/08/2026"
+            num_range = re.search(r'\b\d{1,2}[\/\-](\d{1,2})[\/\-]\d{2,4}\s*(?:to|\-)\s*\d{1,2}[\/\-]\d{1,2}[\/\-]', p)
+            if num_range:
+                month_num = int(num_range.group(1))
+                if 1 <= month_num <= 12:
+                    month = months_list[month_num - 1]
+                    
+        if not month:
+            period_match = re.search(r'(?:Bill\s*Period|Statement\s*Period|Period)\s*[:\-]?\s*(?:\d{1,2}\s*)?([A-Za-z]{3})', p, re.IGNORECASE)
+            if period_match:
+                month = period_match.group(1).capitalize()
+            
+        if not month:
+            period_date_match = re.search(r'(?:Bill\s*Period|Statement\s*Period|Period)\s*[:\-]?\s*\d{1,2}[\/\-](\d{1,2})[\/\-]', p, re.IGNORECASE)
+            if period_date_match:
+                month_num = int(period_date_match.group(1))
+                if 1 <= month_num <= 12:
+                    month = months_list[month_num - 1]
+                    
+        if not month:
+            date_match = re.search(r'Bill Date\s*[:\-]?\s*(\d{2})?\s*([A-Za-z]{3})', p, re.IGNORECASE)
+            if date_match:
+                month = date_match.group(2).capitalize()
+                
+        if not month:
+            for m in months_list:
+                if m.lower() in filename_lower:
+                    month = m
+                    break
+                    
+        bills.append({
+            'filename': filename,
+            'type': bill_type,
+            'provider': provider,
+            'invoice_no': invoice_no,
+            'amount': amount,
+            'month': month
+        })
+        
+    if not bills:
+        bills = [parse_bill_legacy(pdf_path, text)]
+        
+    return bills
+
+def parse_bill(pdf_path, single_bill=False):
+    text = extract_text_from_pdf(pdf_path)
+    if single_bill:
+        return parse_bill_page_separation(pdf_path, text)
+    else:
+        return [parse_bill_legacy(pdf_path, text)]
 
 def create_broadband_overlay(output_path):
     from reportlab.pdfgen import canvas
@@ -263,26 +395,32 @@ def fill_pdf(lan_entry):
         print(f"Please place your PDF bills in the blank '{BILLS_DIR}/' directory.")
         return
 
+    single_bill_opt = False
+    if config.has_section('General') and config.has_option('General', 'single_bill'):
+        single_bill_opt = config.getboolean('General', 'single_bill', fallback=False)
+    if '--single-bill' in sys.argv or '--single_bill' in sys.argv or '--single-bill=true' in sys.argv or '--single-bill=1' in sys.argv:
+        single_bill_opt = True
+
     parsed_bills = []
     for f in pdf_files:
-        bill_info = parse_bill(os.path.join(BILLS_DIR, f))
-        
-        # Print warnings for missing fields
-        missing_fields = []
-        if not bill_info['provider']:
-            missing_fields.append('Provider Name')
-        if not bill_info['invoice_no']:
-            missing_fields.append('Invoice/Bill No')
-        if bill_info['amount'] is None:
-            missing_fields.append('Amount')
-        if not bill_info['month']:
-            missing_fields.append('Billing Month')
-            
-        if missing_fields:
-            print(f"Warning: In bill '{f}', the following fields were not found: {', '.join(missing_fields)}")
-            
-        # Keep all bills in the list, even if details are missing (filled as blank / None)
-        parsed_bills.append(bill_info)
+        bills = parse_bill(os.path.join(BILLS_DIR, f), single_bill=single_bill_opt)
+        for bill_info in bills:
+            # Print warnings for missing fields
+            missing_fields = []
+            if not bill_info['provider']:
+                missing_fields.append('Provider Name')
+            if not bill_info['invoice_no']:
+                missing_fields.append('Invoice/Bill No')
+            if bill_info['amount'] is None:
+                missing_fields.append('Amount')
+            if not bill_info['month']:
+                missing_fields.append('Billing Month')
+                
+            if missing_fields:
+                print(f"Warning: In bill '{f}' ({bill_info.get('type')}), the following fields were not found: {', '.join(missing_fields)}")
+                
+            # Keep all bills in the list, even if details are missing (filled as blank / None)
+            parsed_bills.append(bill_info)
             
     # 2. Automatically analyze the quarter from the parsed bills
     quarter_month_mapping = {
@@ -319,17 +457,7 @@ def fill_pdf(lan_entry):
     missing_months = [m for m in months if m not in present_months]
     
     if missing_months:
-        print(f"\n[Warning] No bills were found for the following month(s) in {detected_quarter}: {', '.join(missing_months)}")
-        while True:
-            ans = input("Do you want to proceed with the remaining bills and leave the missing months empty? (yes/no): ").strip().lower()
-            if ans in ['yes', 'y']:
-                print("Proceeding with the claim filling...")
-                break
-            elif ans in ['no', 'n']:
-                print("Exiting without making any changes.")
-                sys.exit(0)
-            else:
-                print("Please enter 'yes' or 'no'.")
+        print(f"\n[Warning] No bills were found for the following month(s) in {detected_quarter}: {', '.join(missing_months)}. Proceeding with remaining bills...")
     
     template_path = TEMPLATE_PDF
     output_path = OUTPUT_PDF_TEMPLATE.format(quarter=detected_quarter)

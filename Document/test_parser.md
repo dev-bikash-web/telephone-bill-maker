@@ -66,15 +66,43 @@ When executed, the tool outputs structured itemized lines for every invoice scan
 =======================================================
 ```
 
+### Multi-Service Bundled Bill Support (Airtel Black & Combined Bills):
+When invoices contain multiple services (e.g. Wi-Fi and Mobile tax invoices bundled in a single statement), the tool automatically executes **page separation**:
+```text
+10101019570278_Aug2026.pdf: Type=Broadband, Month=Aug, Provider=AIRTEL, Invoice=HF2707I006301255, Amount=942.82
+10101019570278_Aug2026.pdf: Type=Postpaid, Month=Aug, Provider=AIRTEL, Invoice=MF2707I006594969, Amount=1945.82
+10101019570278_Sep2026.pdf: Type=Broadband, Month=Sep, Provider=AIRTEL, Invoice=HF2707I007691045, Amount=942.82
+10101019570278_Sep2026.pdf: Type=Postpaid, Month=Sep, Provider=AIRTEL, Invoice=MF2707I008024601, Amount=2041.40
+
+=======================================================
+                 BILLING SUMMARY
+=======================================================
+  Broadband       : ₹  1,885.64  (2 bills)
+  Postpaid        : ₹  3,987.22  (2 bills)
+-------------------------------------------------------
+  Grand Total     : ₹  5,872.86  (4 bills)
+=======================================================
+```
+
 ### Extracted Metadata Fields:
 
 | Field | Description | Detection Logic |
 | :--- | :--- | :--- |
-| **`Type`** | `Broadband` or `Postpaid` | Scans filename and text for keywords (`wifi`, `broadband`, `mobile`, `postpaid`). |
-| **`Month`** | Billing Month (`Jul`, `Aug`, etc.) | Parses `Statement Period`, date headers (`DD/MM/YY`), or filename hints. |
+| **`Type`** | `Broadband` or `Postpaid` | Scans page keywords (`wifi`, `fixedline` vs. `mobile`). |
+| **`Month`** | Billing Month (`Jul`, `Aug`, etc.) | Anchored to `Bill Date`, statement end period, or filename hint. |
 | **`Provider`** | Telecom operator name | Identifies keywords: `AIRTEL`, `JIO`, `BSNL`, `VI`, `MTNL`. |
-| **`Invoice`** | Unique invoice/bill number | Matches standard invoice regex patterns (e.g. `MF...`, `HF...`, or `Bill NO`). |
-| **`Amount`** | Payable billed amount (₹) | Matches `Amount Payable`, `Total Amount`, or decimal currency tokens. |
+| **`Invoice`** | Unique invoice/bill number | Anchored directly to `Bill NO` / `Invoice NO` on the invoice page. |
+| **`Amount`** | Payable billed amount (₹) | Anchored directly to `Total Amount` on the invoice page. |
+
+### `single_bill` Flag / CLI Option:
+- **Default (Without any flag)**: Executes the **legacy parsing routine** unchanged. Ideal for standard individual bills in `telephone_bill/`.
+  ```bash
+  ./test_calculate_bill.sh
+  ```
+- **`--single-bill` (or `single_bill = true` in `config.cfg`)**: Executes **page separation**, segments the PDF by page (`\x0c`), searches for `Bill NO` on each page, and gathers all independent tax invoices (e.g. Airtel Black bundled bills with both Wi-Fi and Mobile).
+  ```bash
+  ./test_calculate_bill.sh --single-bill
+  ```
 
 ---
 
