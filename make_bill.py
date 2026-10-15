@@ -155,23 +155,13 @@ def parse_bill_legacy(pdf_path, text=None):
         
     # 4. Extract Amount Claimed / Payable (Vendor-agnostic)
     amount = None
-    
-    # Pattern A: Search for amount labels followed by decimal numbers
-    amount_labels_regex = r'(?:Amount\s*Payable|Total\s*Amount|Total\s*Due|Amount\s*Due|Total\s*Payable|Net\s*Payable|Grand\s*Total|Total\s*Bill\s*Amount|Payable\s*Amount|Total\s*Charges|Charges\s*Payable)[^\d\n]*([0-9]+\.[0-9]{2})\b'
+    amount_labels_regex = r'(?:Total\s*Amount\s*Payable|Amount\s*Payable|Total\s*Amount|Total\s*Due|Amount\s*Due|Total\s*Payable|Net\s*Payable|Grand\s*Total|Total\s*Bill\s*Amount|Payable\s*Amount|Total\s*Charges|Charges\s*Payable)\s*[:\-]?\s*(?:\n\s*)*[=\s`₹Rs\.]*([0-9,]+\.[0-9]{2})\b'
     match_amount = re.search(amount_labels_regex, text, re.IGNORECASE)
     if match_amount:
-        amount = float(match_amount.group(1))
-        
-    # Pattern B: Fallback to the first decimal amount found in the text (excluding common tax percentages like 9.00, 18.00)
-    if not amount:
-        amounts = re.findall(r'\b([0-9]+\.[0-9]{2})\b', text)
-        valid_amounts = []
-        for amt in amounts:
-            val = float(amt)
-            if val not in [9.00, 18.00, 5.00, 12.00, 28.00] and val > 10.0:
-                valid_amounts.append(val)
-        if valid_amounts:
-            amount = valid_amounts[0]
+        try:
+            amount = float(match_amount.group(1).replace(',', ''))
+        except ValueError:
+            amount = None
             
     # 5. Extract Month (Vendor-agnostic)
     month = None
@@ -254,7 +244,7 @@ def parse_bill_page_separation(pdf_path, text=None):
         invoice_no = inv_match.group(1).strip()
         
         # Provider
-        provider = 'AIRTEL'
+        provider = ""
         for kw, prov_name in provider_map.items():
             if kw in p.lower() or kw in filename_lower:
                 provider = prov_name
@@ -265,31 +255,14 @@ def parse_bill_page_separation(pdf_path, text=None):
         is_broadband = any(k in p_lower for k in ['wifi', 'wi-fi', 'fixedline', 'fixed line', 'broadband'])
         bill_type = 'Broadband' if is_broadband else 'Postpaid'
         
-        # Amount: Anchored to "Total Amount"
+        # Amount: Anchored to semantic total/payable labels
         amount = None
-        amt_match = re.search(r'Total\s*Amount\s*[:\-]?\s*(?:\n\s*)*[=\s`₹]*([0-9,]+\.[0-9]{2})', p, re.IGNORECASE)
+        amt_match = re.search(r'(?:Total\s*Amount\s*Payable|Amount\s*Payable|Total\s*Amount|Total\s*Due|Amount\s*Due|Total\s*Payable|Net\s*Payable|Grand\s*Total|Total\s*Bill\s*Amount|Payable\s*Amount|Total\s*Charges|Charges\s*Payable)\s*[:\-]?\s*(?:\n\s*)*[=\s`₹Rs\.]*([0-9,]+\.[0-9]{2})\b', p, re.IGNORECASE)
         if amt_match:
             try:
                 amount = float(amt_match.group(1).replace(',', ''))
             except ValueError:
                 amount = None
-                
-        if amount is None:
-            amounts = re.findall(r'[`₹\s]([0-9,]+\.[0-9]{2})\b', p)
-            if amounts:
-                for a in amounts:
-                    try:
-                        v = float(a.replace(',', ''))
-                        if is_broadband and abs(v - 942.82) < 0.01:
-                            amount = v
-                            break
-                        if not is_broadband and (abs(v - 1414.82) < 0.01 or abs(v - 1945.82) < 0.01):
-                            amount = v
-                            break
-                    except ValueError:
-                        continue
-                if amount is None and amounts:
-                    amount = float(amounts[0].replace(',', ''))
                     
         # Month: Start month of the billing period takes highest precedence
         month = None

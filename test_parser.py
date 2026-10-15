@@ -18,43 +18,52 @@ def parse_bill_legacy(pdf_path, text=None):
     is_broadband = 'broad_band' in filename or 'wifi' in text.lower() or 'broadband' in text.lower()
     bill_type = 'Broadband' if is_broadband else 'Postpaid'
     
-    provider = 'AIRTEL'
-    if 'airtel' in text.lower():
-        provider = 'AIRTEL'
-        
+    provider = ""
+    provider_map = {
+        'airtel': 'AIRTEL',
+        'jio': 'JIO',
+        'bsnl': 'BSNL',
+        'vodafone': 'VI',
+        'idea': 'VI',
+        ' vi ': 'VI',
+        'mtnl': 'MTNL'
+    }
+    for kw, prov_name in provider_map.items():
+        if kw in text.lower() or kw in filename:
+            provider = prov_name
+            break
+            
     invoice_no = None
-    match = re.search(r'\b([MH]F[A-Z0-9]{14})\b', text)
-    if match:
-        invoice_no = match.group(1)
-    else:
+    invoice_labels_regex = r'(?:Invoice\s*No|Invoice\s*Number|Bill\s*No|Bill\s*Number|Tax\s*Invoice|Invoice\s*#|Bill\s*#)[^\w\n]*([A-Z0-9\-\/]{6,22})\b'
+    match_label = re.search(invoice_labels_regex, text, re.IGNORECASE)
+    if match_label:
+        invoice_no = match_label.group(1).strip()
+    if not invoice_no:
+        match = re.search(r'\b([MH]F[A-Z0-9]{14})\b', text)
+        if match:
+            invoice_no = match.group(1)
+    if not invoice_no:
         lines = text.split('\n')
         for idx, line in enumerate(lines):
-            if 'Bill NO' in line:
+            if any(term in line.lower() for term in ['bill no', 'invoice', 'bill number']):
                 for next_line in lines[idx+1:idx+5]:
                     cleaned = next_line.strip()
-                    if cleaned and len(cleaned) >= 8:
-                        invoice_no = cleaned
-                        break
+                    if cleaned and 6 <= len(cleaned) <= 22 and not any(kw in cleaned.lower() for kw in ['date', 'amount', 'period', 'statement']):
+                        token_match = re.match(r'\b([A-Z0-9\-\/]{6,22})\b', cleaned, re.IGNORECASE)
+                        if token_match:
+                            invoice_no = token_match.group(1)
+                            break
                 if invoice_no:
                     break
                     
     amount = None
-    amounts = re.findall(r'[`₹\s]([0-9]+\.[0-9]{2})\b', text)
-    if amounts:
-        for amt in amounts:
-            val = float(amt)
-            if is_broadband and abs(val - 942.82) < 0.01:
-                amount = val
-                break
-            if not is_broadband and abs(val - 1414.82) < 0.01:
-                amount = val
-                break
-        if not amount:
-            match_payable = re.search(r'(?:Amount Payable|Total Amount)\s*.*?[`₹\s]*([0-9]+\.[0-9]{2})', text, re.IGNORECASE | re.DOTALL)
-            if match_payable:
-                amount = float(match_payable.group(1))
-            else:
-                amount = float(amounts[0]) if amounts else None
+    amount_labels_regex = r'(?:Total\s*Amount\s*Payable|Amount\s*Payable|Total\s*Amount|Total\s*Due|Amount\s*Due|Total\s*Payable|Net\s*Payable|Grand\s*Total|Total\s*Bill\s*Amount|Payable\s*Amount|Total\s*Charges|Charges\s*Payable)\s*[:\-]?\s*(?:\n\s*)*[=\s`₹Rs\.]*([0-9,]+\.[0-9]{2})\b'
+    match_amount = re.search(amount_labels_regex, text, re.IGNORECASE)
+    if match_amount:
+        try:
+            amount = float(match_amount.group(1).replace(',', ''))
+        except ValueError:
+            amount = None
     
     month = None
     range_match = re.search(r'\b\d{1,2}\s*([A-Za-z]{3})\s*\d{2,4}\s*(?:to|\-)\s*\d{1,2}\s*[A-Za-z]{3}', text, re.IGNORECASE)
@@ -105,7 +114,7 @@ def parse_bill_page_separation(pdf_path, text=None):
         invoice_no = inv_match.group(1).strip()
         
         # Provider
-        provider = 'AIRTEL'
+        provider = ""
         provider_map = {
             'airtel': 'AIRTEL',
             'jio': 'JIO',
@@ -125,31 +134,14 @@ def parse_bill_page_separation(pdf_path, text=None):
         is_broadband = any(k in p_lower for k in ['wifi', 'wi-fi', 'fixedline', 'fixed line', 'broadband'])
         bill_type = 'Broadband' if is_broadband else 'Postpaid'
         
-        # Amount: Anchored to "Total Amount"
+        # Amount: Anchored to semantic total/payable labels
         amount = None
-        amt_match = re.search(r'Total\s*Amount\s*[:\-]?\s*(?:\n\s*)*[=\s`₹]*([0-9,]+\.[0-9]{2})', p, re.IGNORECASE)
+        amt_match = re.search(r'(?:Total\s*Amount\s*Payable|Amount\s*Payable|Total\s*Amount|Total\s*Due|Amount\s*Due|Total\s*Payable|Net\s*Payable|Grand\s*Total|Total\s*Bill\s*Amount|Payable\s*Amount|Total\s*Charges|Charges\s*Payable)\s*[:\-]?\s*(?:\n\s*)*[=\s`₹Rs\.]*([0-9,]+\.[0-9]{2})\b', p, re.IGNORECASE)
         if amt_match:
             try:
                 amount = float(amt_match.group(1).replace(',', ''))
             except ValueError:
                 amount = None
-                
-        if amount is None:
-            amounts = re.findall(r'[`₹\s]([0-9,]+\.[0-9]{2})\b', p)
-            if amounts:
-                for a in amounts:
-                    try:
-                        v = float(a.replace(',', ''))
-                        if is_broadband and abs(v - 942.82) < 0.01:
-                            amount = v
-                            break
-                        if not is_broadband and (abs(v - 1414.82) < 0.01 or abs(v - 1945.82) < 0.01):
-                            amount = v
-                            break
-                    except ValueError:
-                        continue
-                if amount is None and amounts:
-                    amount = float(amounts[0].replace(',', ''))
                     
         # Month: Start month of the billing period takes highest precedence
         month = None

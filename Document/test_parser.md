@@ -52,17 +52,17 @@ When executed, the tool outputs structured itemized lines for every invoice scan
 1-5031491371630_415336010_8_2026.pdf: Type=Postpaid, Month=Jul, Provider=AIRTEL, Invoice=MF2707I005670638, Amount=1414.82
 1-5031491371630_652606311_9_2026.pdf: Type=Postpaid, Month=Aug, Provider=AIRTEL, Invoice=MF2707I007036433, Amount=1414.82
 1-5031491371630_891902297_10_2026.pdf: Type=Postpaid, Month=Sep, Provider=AIRTEL, Invoice=MF2707I008401139, Amount=1414.82
-20012268137_437367900_8_2026.pdf: Type=Broadband, Month=Jul, Provider=AIRTEL, Invoice=HF2707I005513161, Amount=942.82
-20012268137_682185166_9_2026.pdf: Type=Broadband, Month=Aug, Provider=AIRTEL, Invoice=HF2707I006913737, Amount=942.82
-20012268137_937941798_10_2026.pdf: Type=Broadband, Month=Sep, Provider=AIRTEL, Invoice=HF2707I008341140, Amount=942.82
+20012268137_437367900_8_2026.pdf: Type=Broadband, Month=Jul, Provider=AIRTEL, Invoice=HF2707I005513161, Amount=980.88
+20012268137_682185166_9_2026.pdf: Type=Broadband, Month=Aug, Provider=AIRTEL, Invoice=HF2707I006913737, Amount=1178.82
+20012268137_937941798_10_2026.pdf: Type=Broadband, Month=Sep, Provider=AIRTEL, Invoice=HF2707I008341140, Amount=1178.82
 
 =======================================================
                  BILLING SUMMARY
 =======================================================
-  Broadband       : ₹  2,828.46  (3 bills)
+  Broadband       : ₹  3,338.52  (3 bills)
   Postpaid        : ₹  4,244.46  (3 bills)
 -------------------------------------------------------
-  Grand Total     : ₹  7,072.92  (6 bills)
+  Grand Total     : ₹  7,582.98  (6 bills)
 =======================================================
 ```
 
@@ -92,7 +92,7 @@ When invoices contain multiple services (e.g. Wi-Fi and Mobile tax invoices bund
 | **`Month`** | Billing Month (`Jul`, `Aug`, etc.) | Anchored to `Bill Date`, statement end period, or filename hint. |
 | **`Provider`** | Telecom operator name | Identifies keywords: `AIRTEL`, `JIO`, `BSNL`, `VI`, `MTNL`. |
 | **`Invoice`** | Unique invoice/bill number | Anchored directly to `Bill NO` / `Invoice NO` on the invoice page. |
-| **`Amount`** | Payable billed amount (₹) | Anchored directly to `Total Amount` on the invoice page. |
+| **`Amount`** | Payable billed amount (₹) | Anchored strictly to semantic payable labels (`Total Amount Payable`, `Amount Payable`, `Total Amount`, etc.). Zero hardcoded shortcuts or arbitrary fallbacks; if not found, field remains `None` and a warning is logged. |
 
 ### `single_bill` Flag / CLI Option:
 - **Default (Without any flag)**: Executes the **legacy parsing routine** unchanged. Ideal for standard individual bills in `telephone_bill/`.
